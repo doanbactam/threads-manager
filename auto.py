@@ -196,8 +196,6 @@ class DeleteConfirmationDialog(QDialog):
 
 
 class AutomatorGUI(QWidget):
-
-    update_status_signal = pyqtSignal(list)
     def __init__(self):
         super().__init__()
         self.automator = ThreadsAutomator()
@@ -206,7 +204,6 @@ class AutomatorGUI(QWidget):
         self.automator.load_accounts('accounts.json')
         self.display_accounts()
 
-        self.update_status_signal.connect(self.update_account_status)
     def initUI(self):
         self.setWindowTitle("Công cụ tự động hóa Threads")
         self.setGeometry(300, 300, 800, 500)
@@ -278,13 +275,6 @@ class AutomatorGUI(QWidget):
 
         self.headless_checkbox.setChecked(self.automator.headless_mode)
 
-        # Register QVector<int> for signal/slot usage -  You can remove this line if not needed
-        # Register QVector<int> for signal/slot usage
-#        QThread.currentThread().setObjectName('MainThread')
-  #      QMetaObject.registerArgumentMetaType('QVector<int>') 
-    def my_method(self):
-        data = [1, 2, 3]  # Your data, now a Python list
-        self.mySignal.emit(data)  # No need for Q_ARG
     def open_account_dialog(self):
         dialog = AccountDialog(self)
         dialog.exec_()
@@ -332,23 +322,17 @@ class AutomatorGUI(QWidget):
         try:
             self.automator.delay_time = float(self.delay_input.text())
             selected_items = self.accounts_table.selectedItems()
-            selected_usernames = set()  # Initialize set to store selected usernames
             if selected_items:
-                for item in selected_items:
-                    if item.column() == 0:
-                        selected_usernames.add(item.text())
-                # Emit the update_status_signal with selected usernames and "Đang chạy" status
-                for username in selected_usernames:
-                    self.update_status_signal.emit([username, "Đang chạy"])
+                selected_usernames = {self.accounts_table.item(i.row(), 0).text() for i in selected_items if
+                                        i.column() == 0}
                 threading.Thread(target=self.automator.run_automator, args=(
-                    selected_usernames, self.headless_checkbox.isChecked())).start()
+                selected_usernames, self.headless_checkbox.isChecked())).start()
             else:
                 QMessageBox.warning(self, "Lỗi", "Vui lòng chọn tài khoản để chạy.")
         except ValueError:
             QMessageBox.warning(self, "Lỗi", "Vui lòng nhập thời gian delay hợp lệ.")
 
-    def update_account_status(self, data):
-        username, status = data[0], data[1]  # Unpack the data
+    def update_account_status(self, username, status):
         for row in range(self.accounts_table.rowCount()):
             if self.accounts_table.item(row, 0).text() == username:
                 self.accounts_table.setItem(row, 2, QTableWidgetItem(status))
@@ -357,6 +341,7 @@ class AutomatorGUI(QWidget):
                 else:
                     self.accounts_table.item(row, 2).setBackground(QColor('yellow'))
                 break
+
 
 if __name__ == "__main__":
     app = QApplication([])
